@@ -5,7 +5,7 @@ project(t1)
 # sources
 set(SOURCE_DIR "${CMAKE_SOURCE_DIR}/src")
 set(SOURCE_FILE "${SOURCE_DIR}/t1.hpp")
-set(SOURCE_CMAKE_CONFIG_FILE "${CMAKE_SOURCE_DIR}/t1Config.hpp")
+set(SOURCE_CMAKE_CONFIG_FILE "${CMAKE_SOURCE_DIR}/cmake/t1Config.cmake")
 
 # settings
 set(CMAKE_CXX_STANDARD 17)
