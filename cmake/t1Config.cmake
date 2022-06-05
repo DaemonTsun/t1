@@ -2,7 +2,7 @@
 # The t1 cmake library
 # get all files according to pattern, relative to TESTROOT
 macro(find_test_sources OUT DIR TESTROOT PATTERN)
-    file(GLOB_RECURSE ${OUT} RELATIVE "${CMAKE_SOURCE_DIR}" "${DIR}/${PATTERN}")
+    file(GLOB_RECURSE ${OUT} RELATIVE "${TESTROOT}" "${DIR}/${PATTERN}")
 endmacro()
 
 macro(split_main_path MAIN NAME PATH)
@@ -42,7 +42,7 @@ endmacro()
 # defines TEST_SOURCES
 macro(add_test_directory DIR)
     message("-- t1: adding test directory ${DIR}")
-    find_test_sources(TEST_SOURCES "${DIR}" "${DIR}" "*.cpp")
+    find_test_sources(TEST_SOURCES "${DIR}" "${CMAKE_CURRENT_LIST_DIR}" "*.cpp")
     find_test_non_main_source_deps(TEST_DEPS_ ${ARGN})
     
     foreach(INPUT_FILE ${TEST_SOURCES})
