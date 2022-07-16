@@ -168,8 +168,8 @@ void exception_failed(const assert_info& info, const char *error, const std::str
     ::t1::tests::current_unit_failed = true;\
 }
 
-#define JOIN(x, y) x##y
-#define JOIN3(x, y, z) x##y##z
+#define JOIN(X, Y) X##Y
+#define JOIN3(X, Y, Z) X##Y##Z
 
 #define define_test(NAME) \
     static void JOIN3(test_, NAME, _f)();\
