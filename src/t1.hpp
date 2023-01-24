@@ -5,7 +5,6 @@
 #include <iostream>
 #include <vector>
 #include <string>
-#include <filesystem>
 #include <chrono>
 
 namespace t1
@@ -21,6 +20,24 @@ struct printable
         return txt;
     }
 };
+
+const char *get_filename(const char *path)
+{
+    if (path == nullptr)
+        return nullptr;
+
+    const char *last_slash = "";
+
+    while (*path != '\0')
+    {
+        if (*path == '/')
+            last_slash = path;
+        
+        path++;
+    }
+
+    return last_slash + 1;
+}
 
 template<typename T>
 struct printable<T, std::void_t<decltype(std::declval<std::ostream&>() << std::declval<T>())>>
@@ -174,13 +191,13 @@ void exception_failed(const assert_info& info, const char *error, const std::str
 #define define_test(NAME) \
     static void JOIN3(test_, NAME, _f)();\
     namespace { static const auto JOIN(test_, NAME) = ::t1::tests::add(\
-            ::t1::unit{#NAME, JOIN3(test_, NAME, _f), std::filesystem::path(__FILE__).filename(), __LINE__}); } \
+            ::t1::unit{#NAME, JOIN3(test_, NAME, _f), t1::internal::get_filename(__FILE__), __LINE__}); } \
     static void JOIN3(test_, NAME, _f)()
 
 // used internally
 #define ASSERT_GENERIC2(ASRT, EXPR, EXPECTED) \
     {\
-        if (! ASRT(::t1::assert_info{std::filesystem::path(__FILE__).filename(), __LINE__, #EXPR, #EXPECTED}, EXPR, EXPECTED) && ::t1::tests::stop_on_fail)\
+        if (! ASRT(::t1::assert_info{t1::internal::get_filename(__FILE__), __LINE__, #EXPR, #EXPECTED}, EXPR, EXPECTED) && ::t1::tests::stop_on_fail)\
             return;\
     }
 
@@ -211,14 +228,14 @@ void exception_failed(const assert_info& info, const char *error, const std::str
     {\
         ::t1::tests::total_asserts_failed++;\
         ::t1::tests::current_unit_failed = true;\
-        ::t1::exception_failed(::t1::assert_info{std::filesystem::path(__FILE__).filename(), __LINE__, #EXPR, #EXCEPT},\
+        ::t1::exception_failed(::t1::assert_info{t1::internal::get_filename(__FILE__), __LINE__, #EXPR, #EXCEPT},\
                                #EXCEPT, TEST_altMsg.c_str());\
     }\
 }
 
 struct assert_info
 {
-    std::string file;
+    const char *file;
     int line;
     std::string str1; // the actual expression string
     std::string str2; // the expected value string, if any
