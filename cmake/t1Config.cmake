@@ -22,7 +22,6 @@ macro(add_test MAIN)
     add_executable(${TEST_NAME_} ${MAIN} ${ADD_TEST_SOURCE_DEPS})
 
     if (DEFINED ADD_TEST_INCLUDE_DIRS)
-        message(${ADD_TEST_INCLUDE_DIRS})
         target_include_directories(${TEST_NAME_} PRIVATE ${ADD_TEST_INCLUDE_DIRS})
     endif()
 
