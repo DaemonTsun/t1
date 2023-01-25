@@ -2,7 +2,6 @@
 
 #pragma once
 
-#include <iostream>
 #include <vector>
 #include <string>
 #include <chrono>
@@ -101,86 +100,37 @@ template<typename T>
 auto printable(const T& obj) -> decltype(::t1::internal::printable<T>::call(obj))
     { return ::t1::internal::printable<T>::call(obj); }
 
-template<typename OStreamT, typename T>
-OStreamT& fprint(OStreamT &_os, T &&t)
-{
-    _os << printable(t);
-    return _os;
-}
-
-template<typename OStreamT, typename T, typename... Ts>
-OStreamT& fprint(OStreamT &_os, T &&t, Ts &&...ts)
-{
-    _os << printable(t);
-    return fprint(_os, std::forward<Ts>(ts)...);
-}
-
-template<typename OStreamT>
-OStreamT& fprintln(OStreamT &_os)
-{
-    _os << std::endl;
-    return _os;
-}
-
-template<typename OStreamT, typename T, typename... Ts>
-OStreamT& fprintln(OStreamT &_os, T &&t, Ts &&...ts)
-{
-    _os << printable(t);
-    return fprintln(_os, std::forward<Ts>(ts)...);
-}
-
-template<typename... Ts>
-decltype(std::cout)& print(Ts &&...ts)
-{
-    return fprint(std::cout, std::forward<Ts>(ts)...);
-}
-
-template<typename... Ts>
-decltype(std::cout)& println(Ts &&...ts)
-{
-    return fprintln(std::cout, std::forward<Ts>(ts)...);
-}
-
-#define vprint(...)\
-    {\
-        if (::t1::tests::verbose)\
-            print(__VA_ARGS__);\
-    }
-
-#define vprintln(...)\
-    {\
-        if (::t1::tests::verbose)\
-            println(__VA_ARGS__);\
-    }
-
 struct assert_info;
 void exception_failed(const assert_info& info, const char *error, const std::string &other);
 
-#define GENERIC_ERROR(...)\
+#define GENERIC_ERROR(fmt, ...)\
 {\
-    vprintln();\
-    ::t1::fprintln(std::cout __VA_OPT__(,) __VA_ARGS__);\
+    printf("\n");\
+    printf(fmt __VA_OPT__(,) __VA_ARGS__);\
 }
 
-#define UNEXPECETED_EXCEPTION(...)\
+#define UNEXPECETED_EXCEPTION(fmt, ...)\
 {\
-    GENERIC_ERROR("[", escape::source, ::t1::tests::current_unit->file, ":", ::t1::tests::current_unit->line,\
-                  escape::reset, " ", escape::test_name, ::t1::tests::current_unit->name,\
-                  escape::reset, "] ",\
-                  escape::exception, "unexpected exception:", escape::reset,\
-                  "\n  ", escape::exception, __VA_ARGS__, escape::reset, "\n");\
+    printf("\n[%s%s:%d%s %s%s%s] %sunexpected exception:%s\n  ",\
+                  escape::source, ::t1::tests::current_unit->file, ::t1::tests::current_unit->line,\
+                  escape::reset, escape::test_name, ::t1::tests::current_unit->name,\
+                  escape::reset, \
+                  escape::exception, escape::reset\
+                  );\
+    printf(fmt __VA_OPT__(,) __VA_ARGS__);\
 }
 
 #define ASSERT_FAILED2(INFO, ASRT, VALUE, EXPECTED, DESC)\
 {\
-    GENERIC_ERROR("[", escape::source, INFO.file, ":", info.line,\
-                  escape::reset, " ", escape::test_name, ::t1::tests::current_unit->name,\
-                  escape::reset, "] ",\
-                  escape::exception, "assert failed:", escape::reset,\
-                  "\n  " ASRT "(", INFO.str1, ", ", INFO.str2, ")\n  ",\
-                  escape::check_actual, VALUE, escape::reset,\
-                  " " DESC " ", escape::check_expected, EXPECTED,\
-                  escape::reset, "\n");\
+    printf("\n[%s%s:%d%s %s%s%s] %sassert failed:%s\n  " ASRT "(%s, %s)\n  %s%s%s" DESC " %s%s%s\n",\
+                  escape::source, INFO.file, info.line,\
+                  escape::reset, escape::test_name, ::t1::tests::current_unit->name,\
+                  escape::reset,\
+                  escape::exception, escape::reset,\
+                  INFO.str1, INFO.str2,\
+                  escape::check_actual, printable(VALUE).c_str(), escape::reset,\
+                  escape::check_expected, printable(EXPECTED).c_str(),\
+                  escape::reset);\
 \
     ::t1::tests::current_unit_failed = true;\
 }
@@ -237,16 +187,16 @@ struct assert_info
 {
     const char *file;
     int line;
-    std::string str1; // the actual expression string
-    std::string str2; // the expected value string, if any
+    const char *str1; // the actual expression string
+    const char *str2; // the expected value string, if any
 };
 
 struct unit
 {
     using FuncPtr = void(*)();
-    std::string name;
+    const char *name;
     FuncPtr func;
-    std::string file;
+    const char *file;
     unsigned int line;
 };
 
@@ -308,7 +258,8 @@ struct tests
             current_unit = &unit;
             auto thrown = false;
 
-            vprint(escape::test_name, unit.name, escape::reset, "...");
+            if (::t1::tests::verbose)
+                printf("%s %s %s...", escape::test_name, unit.name, escape::reset);
 
             try
             {
@@ -317,12 +268,12 @@ struct tests
             catch (const std::exception& exception)
             {
                 thrown = true;
-                UNEXPECETED_EXCEPTION(std::string("std::exception: ") + exception.what());
+                UNEXPECETED_EXCEPTION("%s std::exception: %s%s\n", escape::exception, exception.what(), escape::reset);
             }
             catch (...)
             {
                 thrown = true;
-                UNEXPECETED_EXCEPTION("<Not a std::exception object>");
+                UNEXPECETED_EXCEPTION("%s<Not a std::exception object>%s\n", escape::exception, escape::reset);
             }
 
             auto end = std::chrono::high_resolution_clock::now();
@@ -332,7 +283,9 @@ struct tests
             if (last_passed)
             {
                 std::chrono::duration<double> diff = end-start;
-                vprintln(" ", escape::passed, "passes", escape::reset, " (", std::fixed, diff.count(), std::defaultfloat, "s)");
+                
+                if (::t1::tests::verbose)
+                    printf(" %spasses%s (%.5fs)", escape::passed, escape::reset, diff.count());
             }
             else
                 total_units_failed++;
@@ -374,54 +327,45 @@ DEFINE_ASSERT_OP2(assert_less_or_equal, <=, "is not less or equal to");
 
 void exception_failed(const assert_info& info, const char *error, const std::string &other)
 {
-    GENERIC_ERROR("[", escape::source, info.file, ":", info.line,
-                  escape::reset, " ", escape::test_name, ::t1::tests::current_unit->name,
-                  escape::reset, "] ",
-                  escape::exception, "assert failed:", escape::reset, "\n  ",
-                  "assert_throws(", info.str1, ", ", info.str2, ")");
+    GENERIC_ERROR("[%s%s:%d%s %s%s%s] %s assert failed:%s\n  assert_throws(%s, %s)\n",
+                  escape::source, info.file, info.line,
+                  escape::reset, escape::test_name, ::t1::tests::current_unit->name,
+                  escape::reset,
+                  escape::exception, escape::reset,
+                  info.str1, info.str2);
 
 	if (!other.empty())
     {
-		fprintln(std::cout, "  got unexpected exception: \n  ",
-			 	 escape::exception, other, escape::reset, "\n");
+		printf("  got unexpected exception: \n  %s%s%s\n\n",
+			 	 escape::exception, other.c_str(), escape::reset);
 	}
     else
-		fprintln(std::cout, escape::exception, "  no exception was thrown", escape::reset, "\n");
-
+		printf("  %sno exception was thrown%s\n\n",
+			 	 escape::exception, escape::reset);
 }
 
 void print_results(unsigned int failed, unsigned int total, const char *name)
 {
     if (total == 0)
     {
-        println(escape::warn, "no ", name, " found", escape::reset);
+        printf("%sno %s found%s\n", escape::warn, name, escape::reset);
         return;
     }
 
     float pct = ((float)failed / total) * 100;
 
-    if (failed > 0)
-        std::cout << escape::failed;
-    else
-        std::cout << escape::passed;
-
-    print(failed, escape::reset, " of ", total, " (");
-    
-    if (failed >= total)
-        print(escape::failed);
-    else if (failed == 0)
-        print(escape::passed);
-    
-    println(pct, "%", escape::reset, ") ", name, " failed");
+    printf("%s%u%s of %u (%s%.4f%%%s) %s failed\n",
+           (failed > 0 ? escape::failed : escape::passed),
+           failed, escape::reset, total,
+           (failed >= total ? escape::failed : escape::passed),
+           pct, escape::reset, name);
 }
 
 #define print_summary()\
 {\
     if (::t1::tests::verbose && ::t1::tests::last_passed)\
-        std::cout << std::endl;\
-    std::cout << "summary of " << ::t1::escape::source\
-              << __FILE__ << ::t1::escape::reset\
-              << std::endl;\
+        puts("");\
+    printf("summary of %s%s%s\n", ::t1::escape::source, __FILE__, ::t1::escape::reset);\
 \
     if (::t1::tests::total_asserts > 0)\
         ::t1::print_results(::t1::tests::total_asserts_failed, t1::tests::total_asserts, "asserts");\
