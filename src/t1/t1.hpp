@@ -3,6 +3,7 @@
 #pragma once
 
 #include <vector>
+#include <sstream>
 #include <string>
 #include <chrono>
 
@@ -41,7 +42,12 @@ const char *get_filename(const char *path)
 template<typename T>
 struct printable<T, std::void_t<decltype(std::declval<std::ostream&>() << std::declval<T>())>>
 {
-    static const T& call(const T& obj) { return obj; }
+    static const std::string call(const T& obj)
+    {
+        std::stringstream ss;
+        ss << obj;
+        return ss.str();
+    }
 };
 
 template<typename E>
