@@ -128,7 +128,7 @@ void exception_failed(const assert_info& info, const char *error, const std::str
 
 #define ASSERT_FAILED2(INFO, ASRT, VALUE, EXPECTED, DESC)\
 {\
-    printf("\n[%s%s:%d%s %s%s%s] %sassert failed:%s\n  " ASRT "(%s, %s)\n  %s%s%s" DESC " %s%s%s\n",\
+    printf("\n[%s%s:%d%s %s%s%s] %sassert failed:%s\n  " ASRT "(%s, %s)\n  %s%s%s " DESC " %s%s%s\n",\
                   escape::source, INFO.file, info.line,\
                   escape::reset, escape::test_name, ::t1::tests::current_unit->name,\
                   escape::reset,\
