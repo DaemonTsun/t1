@@ -12,8 +12,8 @@ endmacro()
 
 macro(add_test TEST_SRC_FILE)
     set(_OPTIONS)
-    set(_SINGLE_VAL_ARGS)
-    set(_MULTI_VAL_ARGS INCLUDE_DIRS LIBRARIES SOURCE_DEPS)
+    set(_SINGLE_VAL_ARGS CPP_VERSION)
+    set(_MULTI_VAL_ARGS INCLUDE_DIRS LIBRARIES SOURCE_DEPS CPP_WARNINGS)
 
     message(VERBOSE "t1: adding test ${TEST_SRC_FILE}")
 
@@ -22,23 +22,36 @@ macro(add_test TEST_SRC_FILE)
     split_path_into_filename_and_parent_path(${TEST_SRC_FILE} TEST_NAME_ TEST_PATH_)
     set(TEST_OUTPUT_DIR_ "${CMAKE_CURRENT_BINARY_DIR}/${TEST_PATH_}")
 
-    add_executable(${TEST_NAME_})
+    if (NOT TARGET "${TEST_NAME_}")
+        add_executable(${TEST_NAME_})
 
-    target_sources(${TEST_NAME_} PRIVATE ${TEST_SRC_FILE} ${ADD_TEST_SOURCE_DEPS})
+        target_sources(${TEST_NAME_} PRIVATE ${TEST_SRC_FILE} ${ADD_TEST_SOURCE_DEPS})
 
-    if (DEFINED ADD_TEST_INCLUDE_DIRS)
-        target_include_directories(${TEST_NAME_} PRIVATE ${ADD_TEST_INCLUDE_DIRS})
+        if (NOT DEFINED ADD_TEST_CPP_VERSION)
+            set(ADD_TEST_CPP_VERSION 20)
+        endif()
+
+        if (DEFINED ADD_TEST_INCLUDE_DIRS)
+            target_include_directories(${TEST_NAME_} PRIVATE ${ADD_TEST_INCLUDE_DIRS})
+        endif()
+
+        if (DEFINED ADD_TEST_LIBRARIES)
+            target_link_libraries(${TEST_NAME_} ${ADD_TEST_LIBRARIES})
+        endif()
+
+        if (DEFINED ADD_TEST_CPP_WARNINGS)
+            target_compile_options(${TEST_NAME_} PRIVATE ${ADD_TEST_CPP_WARNINGS})
+        endif()
+
+        file(MAKE_DIRECTORY "${TEST_OUTPUT_DIR_}")
+        set_target_properties("${TEST_NAME_}" PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${TEST_OUTPUT_DIR_}")
+        set_property(TARGET "${TEST_NAME_}" PROPERTY CXX_STANDARD ${ADD_TEST_CPP_VERSION})
+
+        set(T1_TEST_TARGETS "${T1_TEST_TARGETS}" "${TEST_NAME_}")
+        set(T1_TEST_EXECUTABLES "${T1_TEST_EXECUTABLES}" "${TEST_OUTPUT_DIR_}/${TEST_NAME_}")
+    else()
+        message(WARNING "t1: test with name ${TEST_NAME_} already registered, skipping.")
     endif()
-
-    if (DEFINED ADD_TEST_LIBRARIES)
-        target_link_libraries(${TEST_NAME_} ${ADD_TEST_LIBRARIES})
-    endif()
-
-    file(MAKE_DIRECTORY "${TEST_OUTPUT_DIR_}")
-    set_target_properties(${TEST_NAME_} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${TEST_OUTPUT_DIR_}")
-
-    set(T1_TEST_TARGETS "${T1_TEST_TARGETS}" "${TEST_NAME_}")
-    set(T1_TEST_EXECUTABLES "${T1_TEST_EXECUTABLES}" "${TEST_OUTPUT_DIR_}/${TEST_NAME_}")
 endmacro()
 
 macro(find_test_non_main_source_deps TEST_DEPS_)
@@ -62,41 +75,66 @@ endmacro()
 # defines TEST_SOURCES
 macro(add_test_directory DIR)
     set(_OPTIONS)
-    set(_SINGLE_VAL_ARGS)
-    set(_MULTI_VAL_ARGS INCLUDE_DIRS LIBRARIES SOURCE_DEPS)
+    set(_SINGLE_VAL_ARGS CPP_VERSION)
+    set(_MULTI_VAL_ARGS INCLUDE_DIRS LIBRARIES SOURCE_DEPS CPP_WARNINGS)
 
     cmake_parse_arguments(ADD_TEST_DIRECTORY "${_OPTIONS}" "${_SINGLE_VAL_ARGS}" "${_MULTI_VAL_ARGS}" ${ARGN})
+
+    if (NOT DEFINED ADD_TEST_DIRECTORY_CPP_VERSION)
+        set(ADD_TEST_DIRECTORY_CPP_VERSION 20)
+    endif()
 
     message(STATUS "t1: adding test directory ${DIR}")
     find_test_sources(TEST_SOURCES "${DIR}" "${CMAKE_CURRENT_LIST_DIR}" "*.cpp")
     find_test_non_main_source_deps(TEST_DEPS_ ${ADD_TEST_DIRECTORY_SOURCE_DEPS})
     
     foreach(INPUT_FILE ${TEST_SOURCES})
-        add_test("${INPUT_FILE}" INCLUDE_DIRS ${ADD_TEST_DIRECTORY_INCLUDE_DIRS} LIBRARIES ${ADD_TEST_DIRECTORY_LIBRARIES} SOURCE_DEPS ${TEST_DEPS_})
+        add_test("${INPUT_FILE}"
+            CPP_VERSION ${ADD_TEST_DIRECTORY_CPP_VERSION}
+            CPP_WARNINGS ${ADD_TEST_DIRECTORY_CPP_WARNINGS}
+            INCLUDE_DIRS ${ADD_TEST_DIRECTORY_INCLUDE_DIRS}
+            LIBRARIES ${ADD_TEST_DIRECTORY_LIBRARIES}
+            SOURCE_DEPS ${TEST_DEPS_})
     endforeach()
 endmacro()
 
 # adds a command to build all tests and a command to run all tests
 macro(register_tests)
-    add_custom_target(tests)
+    if (NOT TARGET tests)
+        add_custom_target(tests)
+    endif()
 
     foreach(TEST ${T1_TEST_TARGETS})
         add_dependencies(tests "${TEST}")
     endforeach()
 
-    add_custom_target(runtests)
-    add_custom_target(vruntests)
-    add_custom_target(valgrindtests)
+    if (NOT TARGET runtests)
+        add_custom_target(runtests)
+    endif()
+
+    if (NOT TARGET vruntests)
+        add_custom_target(vruntests)
+    endif()
+
+    if (NOT TARGET valgrindtests)
+        add_custom_target(valgrindtests)
+    endif()
 
     foreach(EXE ${T1_TEST_EXECUTABLES})
         split_path_into_filename_and_parent_path(${EXE} TEST_NAME_ TEST_PATH_)
-        add_custom_target("run${TEST_NAME_}" COMMAND "${EXE}")
-        add_dependencies(runtests "run${TEST_NAME_}")
 
-        add_custom_target("vrun${TEST_NAME_}" COMMAND "${EXE}" "-v")
-        add_dependencies(vruntests "vrun${TEST_NAME_}")
+        if (NOT TARGET "run${TEST_NAME_}")
+            add_custom_target("run${TEST_NAME_}" COMMAND "${EXE}")
+            add_dependencies(runtests "run${TEST_NAME_}")
 
-        add_custom_target("valgrind${TEST_NAME_}" COMMAND "valgrind" "--leak-check=full" "--error-exitcode=1" "--log-file=${TEST_PATH_}/valgrind.log" ${ARGN} "${EXE}")
-        add_dependencies(valgrindtests "valgrind${TEST_NAME_}")
+            add_custom_target("vrun${TEST_NAME_}" COMMAND "${EXE}" "-v")
+            add_dependencies(vruntests "vrun${TEST_NAME_}")
+
+            add_custom_target("valgrind${TEST_NAME_}" COMMAND "valgrind" "--leak-check=full" "--error-exitcode=1" "--log-file=${TEST_PATH_}/valgrind.log" ${ARGN} "${EXE}")
+            add_dependencies(valgrindtests "valgrind${TEST_NAME_}")
+        else()
+            message(WARNING "t1: test with name ${TEST_NAME_} already registered, skipping.")
+        endif()
+
     endforeach()
 endmacro()
