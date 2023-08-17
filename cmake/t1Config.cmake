@@ -5,6 +5,13 @@ macro(find_test_sources OUT DIR TESTROOT PATTERN)
     file(GLOB_RECURSE ${OUT} RELATIVE "${TESTROOT}" "${DIR}/${PATTERN}")
 endmacro()
 
+# these are mostly relevant for Windows
+set(_t1Config_CMAKE_DIR "${CMAKE_CURRENT_LIST_DIR}")
+cmake_path(GET _t1Config_CMAKE_DIR PARENT_PATH _t1_SHARE_DIR)
+cmake_path(GET _t1_SHARE_DIR PARENT_PATH _t1_SHARE_PARENT_DIR)
+cmake_path(GET _t1_SHARE_PARENT_DIR PARENT_PATH _t1_INSTALL_DIR)
+set(_t1_INCLUDE_DIR "${_t1_INSTALL_DIR}/include")
+
 macro(split_path_into_filename_and_parent_path FULLPATH NAME PATH)
     get_filename_component(${NAME} "${FULLPATH}" NAME_WLE)
     get_filename_component(${PATH} "${FULLPATH}" DIRECTORY)
@@ -33,6 +40,10 @@ macro(add_test TEST_SRC_FILE)
 
         if (DEFINED ADD_TEST_INCLUDE_DIRS)
             target_include_directories(${TEST_NAME_} PRIVATE ${ADD_TEST_INCLUDE_DIRS})
+        endif()
+
+        if (_t1_INCLUDE_DIR AND EXISTS "${_t1_INCLUDE_DIR}")
+            target_include_directories(${TEST_NAME_} PRIVATE "${_t1_INCLUDE_DIR}")
         endif()
 
         if (DEFINED ADD_TEST_LIBRARIES)
