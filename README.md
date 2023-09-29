@@ -7,7 +7,7 @@ The C++ header t1.hpp is based on [nyorian/vpp's bugged.hpp](https://github.com/
 t1 is a single C++ header library that comes with a t1Config.cmake file.
 (sudo / admin privileges may be required)
 
-    $ cmake <dir to CMakeLists.txt> <output dir>
+    $ cmake <dir to CMakeLists.txt> -B <output dir>
     $ cmake --install <output dir>
     
 This installs the `t1.hpp` header to `<local include>/t1/t1.hpp` and the `t1Config.cmake` file to `<local share>/t1/cmake/t1Config.cmake`.
