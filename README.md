@@ -5,20 +5,21 @@ The C++ header t1.hpp is based on [nyorian/vpp's bugged.hpp](https://github.com/
 ## Installation
 
 t1 is a single C++ header library that comes with a t1Config.cmake file.
-(sudo may be required)
+(sudo / admin privileges may be required)
 
-    $ mkdir bin && cd bin
-    $ cmake <path to t1 project root>
-    $ make install
+    $ cmake <dir to CMakeLists.txt> <output dir>
+    $ cmake --install <output dir>
     
 This installs the `t1.hpp` header to `<local include>/t1/t1.hpp` and the `t1Config.cmake` file to `<local share>/t1/cmake/t1Config.cmake`.
 
+Should running `cmake <dir to CMakeLists.txt> ...` fail due to no compiler being set (e.g. on Windows when running outside a developer prompt), pass `-Donly_install=1` to the initial `cmake` command to skip building anything.
+
 ## Usage
 
-In a CMake project, use `find_package(t1)` to include the t1 functions.
-To add all source files in a directory as tests, use the `add_test_directory` function.
-To add a single test C++ source file, use the `add_test` function.
-To register all tests as targets, use the `register_tests` function.
+In a CMake project, use `find_package(t1)` to include the t1 macros.
+To add all source files in a directory as tests, use the `add_test_directory` macro.
+To add a single test C++ source file, use the `add_t1_test` macro.
+To register all tests as targets, use the `register_tests` macro.
 
 ```cmake
 find_package(t1)
@@ -48,3 +49,5 @@ Once the tests are added, tests can be compiled with the `make tests` target whi
 Individual tests may be run with `make run<testname>`, all tests can be run with `make runtests`.
 `make vrun<testname>` gives more information about the tests, including the time it took for each individual test to complete.
 `make valgrind<testname>` runs valgrind on the given test, with the output being in `<bindir>/<testdir>/valgrind.log`.
+
+All of the tests will also be added as CTest tests, so using `ctest` is also an option.

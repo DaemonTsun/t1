@@ -358,7 +358,7 @@ void print_results(unsigned int failed, unsigned int total, const char *name)
         return;
     }
 
-    float pct = ((float)failed / total) * 100;
+    float pct = ((float)failed / (float)total) * 100;
 
     printf("%s%u%s of %u (%s%.4f%%%s) %s failed\n",
            (failed > 0 ? escape::failed : escape::passed),

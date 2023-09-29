@@ -1,4 +1,6 @@
 
+include(CTest)
+
 # The t1 cmake library
 # get all files according to pattern, relative to TESTROOT
 macro(find_test_sources OUT DIR TESTROOT PATTERN)
@@ -17,7 +19,7 @@ macro(split_path_into_filename_and_parent_path FULLPATH NAME PATH)
     get_filename_component(${PATH} "${FULLPATH}" DIRECTORY)
 endmacro()
 
-macro(add_test TEST_SRC_FILE)
+macro(add_t1_test TEST_SRC_FILE)
     set(_OPTIONS)
     set(_SINGLE_VAL_ARGS CPP_VERSION)
     set(_MULTI_VAL_ARGS INCLUDE_DIRS LIBRARIES SOURCE_DEPS CPP_WARNINGS)
@@ -52,6 +54,11 @@ macro(add_test TEST_SRC_FILE)
 
         if (DEFINED ADD_TEST_CPP_WARNINGS)
             target_compile_options(${TEST_NAME_} PRIVATE ${ADD_TEST_CPP_WARNINGS})
+        endif()
+
+        if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+            # Exceptions needed for testing exceptions
+            target_compile_options(${TEST_NAME_} PRIVATE "/EHsc")
         endif()
 
         file(MAKE_DIRECTORY "${TEST_OUTPUT_DIR_}")
@@ -100,7 +107,7 @@ macro(add_test_directory DIR)
     find_test_non_main_source_deps(TEST_DEPS_ ${ADD_TEST_DIRECTORY_SOURCE_DEPS})
     
     foreach(INPUT_FILE ${TEST_SOURCES})
-        add_test("${INPUT_FILE}"
+        add_t1_test("${INPUT_FILE}"
             CPP_VERSION ${ADD_TEST_DIRECTORY_CPP_VERSION}
             CPP_WARNINGS ${ADD_TEST_DIRECTORY_CPP_WARNINGS}
             INCLUDE_DIRS ${ADD_TEST_DIRECTORY_INCLUDE_DIRS}
@@ -135,6 +142,7 @@ macro(register_tests)
         split_path_into_filename_and_parent_path(${EXE} TEST_NAME_ TEST_PATH_)
 
         if (NOT TARGET "run${TEST_NAME_}")
+            add_test(NAME "${TEST_NAME_}" COMMAND "${EXE}")
             add_custom_target("run${TEST_NAME_}" COMMAND "${EXE}")
             add_dependencies(runtests "run${TEST_NAME_}")
 
