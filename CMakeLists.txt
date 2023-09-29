@@ -6,7 +6,7 @@ cmake_minimum_required(VERSION 3.18)
 # You can skip trying to build the tests (e.g. if there's no compiler or
 # toolchain set in the environment) and only install t1 by running:
 #
-#    cmake -Donly_install=1 <dir of this CMakeLists.txt file> <output dir>
+#    cmake -Donly_install=1 <dir of this CMakeLists.txt file> -B <output dir>
 #    cmake --install <output dir>
 
 set(SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
