@@ -22,7 +22,12 @@ endmacro()
 macro(add_t1_test TEST_SRC_FILE)
     set(_OPTIONS)
     set(_SINGLE_VAL_ARGS CPP_VERSION)
-    set(_MULTI_VAL_ARGS INCLUDE_DIRS LIBRARIES SOURCE_DEPS CPP_WARNINGS)
+    set(_MULTI_VAL_ARGS INCLUDE_DIRS
+                        LIBRARIES
+                        COMPILE_FLAGS
+                        LINK_FLAGS
+                        SOURCE_DEPS
+                        CPP_WARNINGS)
 
     message(VERBOSE "t1: adding test ${TEST_SRC_FILE}")
 
@@ -50,6 +55,14 @@ macro(add_t1_test TEST_SRC_FILE)
 
         if (DEFINED ADD_TEST_LIBRARIES)
             target_link_libraries(${TEST_NAME_} ${ADD_TEST_LIBRARIES})
+        endif()
+
+        if (DEFINED ADD_TEST_COMPILE_FLAGS)
+            target_compile_options(${TEST_NAME_} PRIVATE ${ADD_TEST_COMPILE_FLAGS})
+        endif()
+
+        if (DEFINED ADD_TEST_LINK_FLAGS)
+            target_link_options(${TEST_NAME_} PRIVATE ${ADD_TEST_LINK_FLAGS})
         endif()
 
         if (DEFINED ADD_TEST_CPP_WARNINGS)
@@ -94,12 +107,17 @@ endmacro()
 macro(add_test_directory DIR)
     set(_OPTIONS)
     set(_SINGLE_VAL_ARGS CPP_VERSION)
-    set(_MULTI_VAL_ARGS INCLUDE_DIRS LIBRARIES SOURCE_DEPS CPP_WARNINGS)
+    set(_MULTI_VAL_ARGS INCLUDE_DIRS
+                        COMPILE_FLAGS
+                        LINK_FLAGS
+                        LIBRARIES
+                        SOURCE_DEPS
+                        CPP_WARNINGS)
 
     cmake_parse_arguments(ADD_TEST_DIRECTORY "${_OPTIONS}" "${_SINGLE_VAL_ARGS}" "${_MULTI_VAL_ARGS}" ${ARGN})
 
     if (NOT DEFINED ADD_TEST_DIRECTORY_CPP_VERSION)
-        set(ADD_TEST_DIRECTORY_CPP_VERSION 20)
+        set(ADD_TEST_DIRECTORY_CPP_VERSION 17)
     endif()
 
     message(STATUS "t1: adding test directory ${DIR}")
@@ -111,6 +129,8 @@ macro(add_test_directory DIR)
             CPP_VERSION ${ADD_TEST_DIRECTORY_CPP_VERSION}
             CPP_WARNINGS ${ADD_TEST_DIRECTORY_CPP_WARNINGS}
             INCLUDE_DIRS ${ADD_TEST_DIRECTORY_INCLUDE_DIRS}
+            COMPILE_FLAGS ${ADD_TEST_DIRECTORY_COMPILE_FLAGS}
+            LINK_FLAGS ${ADD_TEST_DIRECTORY_LINK_FLAGS}
             LIBRARIES ${ADD_TEST_DIRECTORY_LIBRARIES}
             SOURCE_DEPS ${TEST_DEPS_})
     endforeach()
