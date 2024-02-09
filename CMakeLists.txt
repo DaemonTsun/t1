@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.18)
 
+# Version 3:
+# remove C++ standard library, remove exceptions, make library simpler
+# add time display for all test files (and units using --verbose)
+
 # Version 2:
 # buildless installation, ctest compatibility.
 
@@ -23,9 +27,18 @@ else()
 
     if (NOT DEFINED t1_DIR OR t1_DIR)
         # settings
-        set(CMAKE_CXX_STANDARD 17)
+        set(CMAKE_CXX_STANDARD 20)
 
         include_directories("${SOURCE_DIR}")
+
+        if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+            add_compile_options(-fno-exceptions -fno-rtti)
+        elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+            add_compile_options(/GR- /EHsc)
+            add_compile_definitions(_HAS_EXCEPTIONS=0)
+            add_compile_definitions(_CRT_SECURE_NO_WARNINGS=1)
+            add_compile_definitions(WIN32_LEAN_AND_MEAN=1)
+            endif()
 
         add_test_directory("${CMAKE_CURRENT_SOURCE_DIR}/tests" INCLUDE_DIRS "${SOURCE_DIR}")
         register_tests()

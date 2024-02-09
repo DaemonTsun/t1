@@ -5,7 +5,7 @@ define_test(a)
 {
     assert_equal(1, 1);
     assert_equal(2, 2);
-    int *b = new int;
+    int *b = new int; // memleak
 }
 
 define_default_test_main();
