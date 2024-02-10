@@ -463,7 +463,7 @@ struct t1_string
 };
 
 // ---------- FORMAT ----------
-#define t1_TFORMAT_RING_BUFFER_MIN_SIZE 4096
+#define t1_TFORMAT_RING_BUFFER_MIN_SIZE 16384
 
 struct t1_tformat_buffer
 {
@@ -560,32 +560,35 @@ static t1_string _t1_to_string(bool x)
         return t1_string{(char*)"false", 5};
 }
 
-#define define_t1_to_string(Type, Format)\
-t1_string _t1_to_string(Type x)\
+#define define_t1_to_string(TypedVal, Format, ...)\
+t1_string _t1_to_string(TypedVal)\
 {\
-    return t1_tprintf(Format, x);\
+    return t1_tprintf(Format __VA_OPT__(,) __VA_ARGS__);\
 }
 
-define_t1_to_string(char,               "%c");
-define_t1_to_string(unsigned char,      "%hhu");
-define_t1_to_string(signed char,        "%hhd");
-define_t1_to_string(short,              "%hd");
-define_t1_to_string(unsigned short,     "%hu");
-define_t1_to_string(int,                "%d");
-define_t1_to_string(unsigned int,       "%u");
-define_t1_to_string(long,               "%ld");
-define_t1_to_string(unsigned long,      "%lu");
-define_t1_to_string(long long,          "%lld");
-define_t1_to_string(unsigned long long, "%llu");
+#define define_direct_t1_to_string(Type, Format)\
+    define_t1_to_string(Type x, Format, x)
 
-define_t1_to_string(float, "%.f");
-define_t1_to_string(double, "%.lf");
-define_t1_to_string(void*, "%p");
-define_t1_to_string(char*, "%s");
-define_t1_to_string(const char*, "%s");
+define_direct_t1_to_string(char,               "%c");
+define_direct_t1_to_string(unsigned char,      "%hhu");
+define_direct_t1_to_string(signed char,        "%hhd");
+define_direct_t1_to_string(short,              "%hd");
+define_direct_t1_to_string(unsigned short,     "%hu");
+define_direct_t1_to_string(int,                "%d");
+define_direct_t1_to_string(unsigned int,       "%u");
+define_direct_t1_to_string(long,               "%ld");
+define_direct_t1_to_string(unsigned long,      "%lu");
+define_direct_t1_to_string(long long,          "%lld");
+define_direct_t1_to_string(unsigned long long, "%llu");
+
+define_direct_t1_to_string(float, "%.f");
+define_direct_t1_to_string(double, "%.lf");
+define_direct_t1_to_string(void*, "%p");
+define_direct_t1_to_string(char*, "%s");
+define_direct_t1_to_string(const char*, "%s");
 #if t1_Windows
-define_t1_to_string(wchar_t*, "%ws");
-define_t1_to_string(const wchar_t *, "%ws");
+define_direct_t1_to_string(wchar_t*, "%ws");
+define_direct_t1_to_string(const wchar_t *, "%ws");
 #endif
 
 void t1_set_unprintable_was_called();
@@ -841,9 +844,9 @@ static void t1_print_summary()
 
     if (t1_tests::unprintable_called)
     {
-        printf("\n%sNOTE: One or more values could not be printed (%s<unprintable>%s), define\n"
-                "%st1_string t1_to_string(YourType x)%s to enable printing values of YourType.\n"
-                "See %st1/tests/test5.cpp%s for an example.%s\n",
+        printf("\n%sNOTE: One or more values could not be printed (%s<unprintable>%s), use\n"
+                "%sdefine_t1_to_string(YourType x, \"%%d\", x.field, ...)%s to enable printing values\n"
+                "of YourType. See %st1/tests/test5.cpp%s for an example.%s\n",
                 t1_COLOR_WARN,
                 t1_COLOR_FAILED, t1_COLOR_WARN,
                 t1_COLOR_SOURCE, t1_COLOR_WARN,

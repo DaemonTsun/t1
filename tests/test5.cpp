@@ -28,6 +28,19 @@ t1_string t1_to_string(mystruct val)
     return t1_tprintf("mystruct{%d}", val.x);
 }
 
+struct otherstruct
+{
+    int y;
+};
+
+bool operator==(otherstruct l, otherstruct r)
+{
+    return l.y == r.y;
+}
+
+// alternative one-liner
+define_t1_to_string(otherstruct val, "other{%d}", val.y);
+
 define_test(a)
 {
     assert_equal(1, 1);
@@ -40,6 +53,10 @@ define_test(a)
     // because t1_to_string is defined for mystruct, this shows more detail
     // than <unprintable>.
     assert_equal(a, c);
+
+    otherstruct x{1};
+    otherstruct y{2};
+    assert_equal(x, y);
 }
 
 define_default_test_main();
