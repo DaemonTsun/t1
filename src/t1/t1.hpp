@@ -158,12 +158,12 @@ static void t1_get_timespec_difference(const timespec *start, const timespec *en
 	if (diff < 0)
     {
 		out->tv_sec = end->tv_sec - start->tv_sec - 1;
-		out->tv_nsec = t1_NANOSECONDS_IN_A_SECOND + diff;
+		out->tv_nsec = decltype(out->tv_nsec)(t1_NANOSECONDS_IN_A_SECOND + diff);
 	}
     else
     {
 		out->tv_sec = end->tv_sec - start->tv_sec;
-		out->tv_nsec = diff;
+		out->tv_nsec = decltype(out->tv_nsec)(diff);
 	}
 }
 
@@ -210,17 +210,6 @@ static auto t1_ceil_multiple2(T1 x, T2 multiple)
 }
 
 // ---------- MEMORY ----------
-static void *t1_allocate_memory(u64 size)
-{
-    return ::malloc(size);
-}
-
-template<typename T, bool Zero = false>
-static T *t1_allocate_memory()
-{
-    return reinterpret_cast<T*>(t1_allocate_memory(sizeof(T)));
-}
-
 static void *t1_reallocate_memory(void *ptr, u64 size)
 {
     return ::realloc(ptr, size);

@@ -69,11 +69,6 @@ macro(add_t1_test TEST_SRC_FILE)
             target_compile_options(${TEST_NAME_} PRIVATE ${ADD_TEST_CPP_WARNINGS})
         endif()
 
-        if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-            # Exceptions needed for testing exceptions
-            target_compile_options(${TEST_NAME_} PRIVATE "/EHsc")
-        endif()
-
         file(MAKE_DIRECTORY "${TEST_OUTPUT_DIR_}")
         set_target_properties("${TEST_NAME_}" PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${TEST_OUTPUT_DIR_}")
         set_property(TARGET "${TEST_NAME_}" PROPERTY CXX_STANDARD ${ADD_TEST_CPP_VERSION})
