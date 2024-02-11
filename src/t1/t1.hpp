@@ -26,10 +26,25 @@
 #define t1_Mac 1
 #endif
 
+#if defined(__GNUC__)
+#define t1_GNU 1
+#define t1_Clang 0
+#define t1_MSVC 0
+#elif defined(__clang__)
+#define t1_GNU 0
+#define t1_Clang 1
+#define t1_MSVC 0
+#elif defined(_MSC_VER)
+#define t1_GNU 0
+#define t1_Clang 0
+#define t1_MSVC 1
+#endif
+
 // ---------- INCLUDES ---------- 
 #if t1_Windows
 #include <windows.h>
 #include <memoryapi.h>
+
 #else
 #include <sys/mman.h>
 #include <sys/syscall.h>
@@ -90,16 +105,12 @@ typedef int64_t  s64;
 
 // ---------- I/O ----------
 #if t1_Windows
-typedef void* t1_io_handle;
-
-#define W32(r) __declspec(dllimport) r __stdcall
-W32(t1_io_handle) GetStdHandle(int);
-W32(int)          WriteFile(t1_io_handle, void *, int, int *, void *);
+typedef HANDLE t1_io_handle;
 #else
 typedef int t1_io_handle;
 #endif
 
-#if Windows
+#if t1_Windows
 #define _stdin()    GetStdHandle(STD_INPUT_HANDLE)
 #define _stdout()   GetStdHandle(STD_OUTPUT_HANDLE)
 #define _stderr()   GetStdHandle(STD_ERROR_HANDLE)
@@ -113,10 +124,10 @@ static s64 t1_io_write(t1_io_handle h, void *buf, u64 size)
 {
     s64 ret = 0;
 
-#if Windows
+#if t1_Windows
     int tmp;
 
-    if (!::WriteFile(h, buf, (int)size, &tmp, nullptr))
+    if (!::WriteFile(h, buf, (int)size, (LPDWORD)&tmp, nullptr))
         return -1;
 
     ret = tmp;
@@ -132,7 +143,12 @@ static s64 t1_io_write(t1_io_handle h, void *buf, u64 size)
 
 static inline void t1_get_time(timespec *t)
 {
+#if t1_Windows && t1_GNU
+    // timespec_get might not be implemented
+    clock_gettime(CLOCK_REALTIME, t);
+#else
 	timespec_get(t, TIME_UTC);
+#endif
 }
 
 static void t1_get_timespec_difference(const timespec *start, const timespec *end, timespec *out)
@@ -302,7 +318,7 @@ static bool init(t1_ring_buffer *buf, u64 min_size, u32 mapping_count = 3)
     SYSTEM_INFO info;
     GetSystemInfo(&info);
 
-    u64 actual_size = ceil_multiple2(min_size, info.dwAllocationGranularity);
+    u64 actual_size = t1_ceil_multiple2(min_size, info.dwAllocationGranularity);
     u64 total_size = actual_size * mapping_count;
 
     HANDLE fd = CreateFileMappingA(INVALID_HANDLE_VALUE, 0, PAGE_READWRITE,
@@ -311,27 +327,66 @@ static bool init(t1_ring_buffer *buf, u64 min_size, u32 mapping_count = 3)
     if (fd == INVALID_HANDLE_VALUE)
         return false;
 
-    char *ptr = (char*)VirtualAlloc2(0, 0, total_size, MEM_RESERVE | MEM_RESERVE_PLACEHOLDER, PAGE_NOACCESS, 0, 0);
+    char *ptr = nullptr;
+
+#if t1_MSVC
+    ptr = (char*)VirtualAlloc2(0, 0, total_size, MEM_RESERVE | MEM_RESERVE_PLACEHOLDER, PAGE_NOACCESS, 0, 0);
     bool mapped = true;
 
-    for (u32 i = 0; i < mapping_count; ++i)
+    if (ptr)
     {
-        u64 offset = i * actual_size;
-        VirtualFree(ptr + offset, actual_size, MEM_RELEASE | MEM_PRESERVE_PLACEHOLDER);
-
-        void *mapping = MapViewOfFile3(fd, 0, ptr + offset, 0, actual_size, MEM_REPLACE_PLACEHOLDER, PAGE_READWRITE, 0, 0);
-
-        if (mapping == nullptr)
+        for (u32 i = 0; i < mapping_count; ++i)
         {
-            // un-roll
-            for (u32 j = 0; j < i; ++j)
-                UnmapViewOfFile(ptr + (j * actual_size));
+            u64 offset = i * actual_size;
+            VirtualFree(ptr + offset, actual_size, MEM_RELEASE | MEM_PRESERVE_PLACEHOLDER);
 
-            mapped = false;
+            void *mapping = MapViewOfFile3(fd, 0, ptr + offset, 0, actual_size, MEM_REPLACE_PLACEHOLDER, PAGE_READWRITE, 0, 0);
 
-            break;
+            if (mapping == nullptr)
+            {
+                // un-roll
+                for (u32 j = 0; j < i; ++j)
+                    UnmapViewOfFile(ptr + (j * actual_size));
+
+                mapped = false;
+
+                break;
+            }
         }
     }
+#else // e.g. w64devkit
+    bool mapped = true;
+    for(u32 attempts = 0; attempts < 10; ++attempts)
+    {
+        ptr = (char*)VirtualAlloc(0, total_size, MEM_RESERVE, PAGE_NOACCESS);
+
+        if (ptr)
+        {
+            VirtualFree(ptr, 0, MEM_RELEASE);
+        
+
+            for (u32 i = 0; i < mapping_count; ++i)
+            {
+                if (!MapViewOfFileEx(fd, FILE_MAP_ALL_ACCESS,
+                                    0, 0, actual_size,
+                                    ptr + (i * actual_size)))
+                {
+                    // un-roll
+                    for (u32 j = 0; j < i; ++j)
+                        UnmapViewOfFile(ptr + (j * actual_size));
+
+                    mapped = false;
+                    break;
+                }
+            }
+        }
+        else
+            mapped = false;
+
+        if (mapped)
+            break;
+    }
+#endif
 
     CloseHandle(fd);
 
@@ -619,7 +674,7 @@ const char *t1_get_filename(const char *path)
     {
         bool is_sep = false;
 
-#if Windows
+#if t1_Windows
         is_sep = (*path == '/' || *path == '\\');
 #else
         is_sep = (*path == '/');
@@ -638,7 +693,7 @@ const char *t1_get_filename(const char *path)
 }
 
 // ---------- TESTS ----------
-#if t1_Windows
+#if t1_Windows && !defined(__MINGW32__)
 #define t1_COLOR_TEST_NAME ""
 #define t1_COLOR_CHECK_EXPECTED ""
 #define t1_COLOR_CHECK_ACTUAL ""

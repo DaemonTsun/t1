@@ -33,14 +33,32 @@ else()
 
         if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
             add_compile_options(-fno-exceptions -fno-rtti)
+
+            if (WIN32)
+                set(CMAKE_C_STANDARD_LIBRARIES   "-lkernel32" CACHE STRING "" FORCE)
+                set(CMAKE_CXX_STANDARD_LIBRARIES "-lkernel32" CACHE STRING "" FORCE)
+            endif()
         elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
-            add_compile_options(/GR- /EHsc)
+            set(CMAKE_CXX_FLAGS "" CACHE STRING "" FORCE)
+            set(CMAKE_CXX_FLAGS_DEBUG "" CACHE STRING "" FORCE)
+            set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG" CACHE STRING "" FORCE)
+            set(CMAKE_EXE_LINKER_FLAGS "/manifest:no /machine:x64 /opt:ref /incremental:no" CACHE STRING "" FORCE)
+            set(CMAKE_EXE_LINKER_FLAGS_DEBUG "/debug" CACHE STRING "" FORCE)
+            set(CMAKE_EXE_LINKER_FLAGS_RELEASE "" CACHE STRING "" FORCE)
+            set(CMAKE_C_STANDARD_LIBRARIES   "kernel32.lib onecore.lib vcruntimed.lib ucrtd.lib" CACHE STRING "" FORCE)
+            set(CMAKE_CXX_STANDARD_LIBRARIES "kernel32.lib onecore.lib vcruntimed.lib ucrtd.lib" CACHE STRING "" FORCE)
+
+            add_compile_options(/GR- /EHsc /Zc:preprocessor)
             add_compile_definitions(_HAS_EXCEPTIONS=0)
             add_compile_definitions(_CRT_SECURE_NO_WARNINGS=1)
             add_compile_definitions(WIN32_LEAN_AND_MEAN=1)
-            endif()
 
-        add_test_directory("${CMAKE_CURRENT_SOURCE_DIR}/tests" INCLUDE_DIRS "${SOURCE_DIR}")
+        endif()
+
+        add_test_directory("${CMAKE_CURRENT_SOURCE_DIR}/tests"
+                           INCLUDE_DIRS "${SOURCE_DIR}"
+                           CPP_VERSION 20)
+                           
         register_tests()
     endif()
 endif()

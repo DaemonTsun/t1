@@ -117,7 +117,7 @@ macro(add_test_directory DIR)
     cmake_parse_arguments(ADD_TEST_DIRECTORY "${_OPTIONS}" "${_SINGLE_VAL_ARGS}" "${_MULTI_VAL_ARGS}" ${ARGN})
 
     if (NOT DEFINED ADD_TEST_DIRECTORY_CPP_VERSION)
-        set(ADD_TEST_DIRECTORY_CPP_VERSION 17)
+        set(ADD_TEST_DIRECTORY_CPP_VERSION 20)
     endif()
 
     message(STATUS "t1: adding test directory ${DIR}")
