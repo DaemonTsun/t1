@@ -607,7 +607,7 @@ static void t1_printf(const char *fmt, ...)
 
 #define printf t1_printf
 
-static t1_string _t1_to_string(bool x)
+[[maybe_unused]] static t1_string _t1_to_string(bool x)
 {
     if (x)
         return t1_string{(char*)"true", 4};
@@ -616,7 +616,7 @@ static t1_string _t1_to_string(bool x)
 }
 
 #define define_t1_to_string(TypedVal, Format, ...)\
-t1_string _t1_to_string(TypedVal)\
+[[maybe_unused]] t1_string _t1_to_string(TypedVal)\
 {\
     return t1_tprintf(Format __VA_OPT__(,) __VA_ARGS__);\
 }
@@ -648,7 +648,7 @@ define_direct_t1_to_string(const wchar_t *, "%ws");
 
 void t1_set_unprintable_was_called();
 
-static t1_string t1_to_string(...)
+[[maybe_unused]] static t1_string t1_to_string(...)
 {
     static char _unprintable[] = "<unprintable>";
     t1_set_unprintable_was_called();
@@ -884,31 +884,32 @@ static void t1_print_results(unsigned int failed, unsigned int total, const char
            pct, t1_COLOR_RESET, name);
 }
 
-static void t1_print_summary()
-{
-    if (t1_tests::verbose && t1_tests::last_passed)
-        puts("");
-
-    printf("summary of %s%s%s\n", t1_COLOR_SOURCE, __FILE__, t1_COLOR_RESET);
-
-    if (t1_tests::total_asserts > 0)
-        t1_print_results(t1_tests::total_asserts_failed, t1_tests::total_asserts, "asserts");
-
-    t1_print_results(t1_tests::total_units_failed, t1_tests::total_units, "units");
-    printf("total time: %.12fs\n", t1_tests::total_seconds);
-
-    if (t1_tests::unprintable_called)
-    {
-        printf("\n%sNOTE: One or more values could not be printed (%s<unprintable>%s), use\n"
-                "%sdefine_t1_to_string(YourType x, \"%%d\", x.field, ...)%s to enable printing values\n"
-                "of YourType. See %st1/tests/test5.cpp%s for an example.%s\n",
-                t1_COLOR_WARN,
-                t1_COLOR_FAILED, t1_COLOR_WARN,
-                t1_COLOR_SOURCE, t1_COLOR_WARN,
-                t1_COLOR_SOURCE, t1_COLOR_WARN,
-                t1_COLOR_RESET
-                );
-    }
+// this is a macro because of __FILE__, duh
+#define t1_print_summary()\
+{\
+    if (t1_tests::verbose && t1_tests::last_passed)\
+        puts("");\
+\
+    printf("summary of %s%s%s\n", t1_COLOR_SOURCE, __FILE__, t1_COLOR_RESET);\
+\
+    if (t1_tests::total_asserts > 0)\
+        t1_print_results(t1_tests::total_asserts_failed, t1_tests::total_asserts, "asserts");\
+\
+    t1_print_results(t1_tests::total_units_failed, t1_tests::total_units, "units");\
+    printf("total time: %.12fs\n", t1_tests::total_seconds);\
+\
+    if (t1_tests::unprintable_called)\
+    {\
+        printf("\n%sNOTE: One or more values could not be printed (%s<unprintable>%s), use\n"\
+                "%sdefine_t1_to_string(YourType x, \"%%d\", x.field, ...)%s to enable printing values\n"\
+                "of YourType. See %st1/tests/test5.cpp%s for an example.%s\n",\
+                t1_COLOR_WARN,\
+                t1_COLOR_FAILED, t1_COLOR_WARN,\
+                t1_COLOR_SOURCE, t1_COLOR_WARN,\
+                t1_COLOR_SOURCE, t1_COLOR_WARN,\
+                t1_COLOR_RESET\
+                );\
+    }\
 }
 
 void t1_nop(){}
@@ -930,7 +931,7 @@ int main(int argc, const char *argv[])\
     t1_tests::run();\
     AFTER_TESTS();\
 \
-    t1_print_summary();\
+    t1_print_summary()\
 \
     free(&t1_tests::units);\
 \
