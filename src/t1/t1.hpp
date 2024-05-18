@@ -2,14 +2,46 @@
 
 #pragma once
 
+#ifdef t1_shadow_stdlib
+#define printf      __builtin_printf
+#define rename      __builtin_rename
+#define renameat    __builtin_renameat
+#define renameat2   __builtin_renameat2
+#define access      __builtin_access
+#define close       __builtin_close
+#define open        __builtin_open
+#define read        __builtin_read
+#define write       __builtin_write
+#define pread64     __builtin_pread64
+#define pwrite64    __builtin_pwrite64
+#define chown       __builtin_chown
+#define fchown      __builtin_fchown
+#define fchownat    __builtin_fchownat
+#define chdir       __builtin_chdir
+#define fchdir      __builtin_fchdir
+#define getcwd      __builtin_getcwd
+#define link        __builtin_link
+#define linkat      __builtin_linkat
+#define symlink     __builtin_symlink
+#define symlinkat   __builtin_symlinkat
+#define readlink    __builtin_readlink
+#define readlinkat  __builtin_readlinkat
+#define unlink      __builtin_unlink
+#define unlinkat    __builtin_unlinkat
+#define rmdir       __builtin_rmdir
+#define chroot      __builtin_chroot
+#define fsync       __builtin_fsync
+#define fdatasync   __builtin_fdatasync
+#define sync        __builtin_sync
+#define truncate    __builtin_truncate
+#define ftruncate   __builtin_ftruncate
+#endif // t1_shadow_stdlib
+
 #include <time.h>
 #include <stdlib.h>
 #include <wchar.h>
 #include <stdarg.h>
-
-#define printf __builtin_printf
 #include <stdio.h>
-#undef printf
 
 // ---------- PLATFORM ----------
 #if defined(__linux__)
@@ -51,6 +83,41 @@
 #include <string.h>
 #include <unistd.h>
 #endif
+
+#ifdef t1_shadow_stdlib
+#undef chown
+#undef fchown
+#undef fchownat
+#undef chdir
+#undef fchdir
+#undef getcwd
+#undef link
+#undef linkat
+#undef symlink
+#undef symlinkat
+#undef readlink
+#undef readlinkat
+#undef unlink
+#undef unlinkat
+#undef rmdir
+#undef chroot
+#undef fsync
+#undef fdatasync
+#undef sync
+#undef truncate
+#undef ftruncate
+#undef pwrite64
+#undef pread64
+#undef write
+#undef read
+#undef open
+#undef close
+#undef access
+#undef renameat2
+#undef renameat
+#undef rename
+#undef printf
+#endif // t1_shadow_stdlib
 
 // ---------- MACROS ----------
 #ifndef JOIN
