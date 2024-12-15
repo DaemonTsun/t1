@@ -75,7 +75,26 @@
 // ---------- INCLUDES ---------- 
 #if t1_Windows
 #include <windows.h>
-#include <memoryapi.h>
+typedef PVOID (*t1_f_VirtualAlloc2)(
+  HANDLE                 Process,
+  PVOID                  BaseAddress,
+  SIZE_T                 Size,
+  ULONG                  AllocationType,
+  ULONG                  PageProtection,
+  MEM_EXTENDED_PARAMETER *ExtendedParameters,
+  ULONG                  ParameterCount
+);
+typedef PVOID (*t1_f_MapViewOfFile3)(
+  HANDLE                 FileMapping,
+  HANDLE                 Process,
+  PVOID                  BaseAddress,
+  ULONG64                Offset,
+  SIZE_T                 ViewSize,
+  ULONG                  AllocationType,
+  ULONG                  PageProtection,
+  MEM_EXTENDED_PARAMETER *ExtendedParameters,
+  ULONG                  ParameterCount
+);
 
 #else
 #include <sys/mman.h>
@@ -129,7 +148,7 @@
 #endif
 
 #ifndef defer
-#if defined(_WIN32) || defined(_WIN64)
+#if defined(_MSC_VER)
 #pragma warning(push)
 #pragma warning(disable : 4623) // implicitly deleted constructor
 #pragma warning(disable : 4626) // implicitly deleted assignment operator
@@ -143,7 +162,7 @@ template <class F> struct _t1_deferrer
         f();
     }
 };
-#if defined(_WIN32) || defined(_WIN64)
+#if defined(_MSC_VER)
 #pragma warning(pop) 
 #endif
 
@@ -385,64 +404,71 @@ static bool init(t1_ring_buffer *buf, u64 min_size, u32 mapping_count = 3)
 
     char *ptr = nullptr;
 
-#if t1_MSVC
-    ptr = (char*)VirtualAlloc2(0, 0, total_size, MEM_RESERVE | MEM_RESERVE_PLACEHOLDER, PAGE_NOACCESS, 0, 0);
-    bool mapped = true;
+    static HMODULE _kernel = LoadLibraryW(L"kernelbase.dll");
 
-    if (ptr)
+    auto VirtualAlloc2  = (t1_f_VirtualAlloc2)(void*)GetProcAddress(_kernel,  "VirtualAlloc2");
+    auto MapViewOfFile3 = (t1_f_MapViewOfFile3)(void*)GetProcAddress(_kernel, "MapViewOfFile3");
+
+    if (VirtualAlloc2 != nullptr && MapViewOfFile3 != nullptr)
     {
-        for (u32 i = 0; i < mapping_count; ++i)
-        {
-            u64 offset = i * actual_size;
-            VirtualFree(ptr + offset, actual_size, MEM_RELEASE | MEM_PRESERVE_PLACEHOLDER);
-
-            void *mapping = MapViewOfFile3(fd, 0, ptr + offset, 0, actual_size, MEM_REPLACE_PLACEHOLDER, PAGE_READWRITE, 0, 0);
-
-            if (mapping == nullptr)
-            {
-                // un-roll
-                for (u32 j = 0; j < i; ++j)
-                    UnmapViewOfFile(ptr + (j * actual_size));
-
-                mapped = false;
-
-                break;
-            }
-        }
-    }
-#else // e.g. w64devkit
-    bool mapped = true;
-    for(u32 attempts = 0; attempts < 10; ++attempts)
-    {
-        ptr = (char*)VirtualAlloc(0, total_size, MEM_RESERVE, PAGE_NOACCESS);
+        ptr = (char*)VirtualAlloc2(0, 0, total_size, MEM_RESERVE | MEM_RESERVE_PLACEHOLDER, PAGE_NOACCESS, 0, 0);
+        bool mapped = true;
 
         if (ptr)
         {
-            VirtualFree(ptr, 0, MEM_RELEASE);
-        
-
             for (u32 i = 0; i < mapping_count; ++i)
             {
-                if (!MapViewOfFileEx(fd, FILE_MAP_ALL_ACCESS,
-                                    0, 0, actual_size,
-                                    ptr + (i * actual_size)))
+                u64 offset = i * actual_size;
+                VirtualFree(ptr + offset, actual_size, MEM_RELEASE | MEM_PRESERVE_PLACEHOLDER);
+
+                void *mapping = MapViewOfFile3(fd, 0, ptr + offset, 0, actual_size, MEM_REPLACE_PLACEHOLDER, PAGE_READWRITE, 0, 0);
+
+                if (mapping == nullptr)
                 {
                     // un-roll
                     for (u32 j = 0; j < i; ++j)
                         UnmapViewOfFile(ptr + (j * actual_size));
 
                     mapped = false;
+
                     break;
                 }
             }
         }
-        else
-            mapped = false;
-
-        if (mapped)
-            break;
     }
-#endif
+    else // old windows, MinGW, etc
+    {
+        bool mapped = true;
+        for(u32 attempts = 0; attempts < 10; ++attempts)
+        {
+            ptr = (char*)VirtualAlloc(0, total_size, MEM_RESERVE, PAGE_NOACCESS);
+
+            if (ptr)
+            {
+                VirtualFree(ptr, 0, MEM_RELEASE);
+
+                for (u32 i = 0; i < mapping_count; ++i)
+                {
+                    if (!MapViewOfFileEx(fd, FILE_MAP_ALL_ACCESS,
+                                        0, 0, actual_size,
+                                        ptr + (i * actual_size)))
+                    {
+                        // un-roll
+                        for (u32 j = 0; j < i; ++j)
+                            UnmapViewOfFile(ptr + (j * actual_size));
+
+                        mapped = false;
+                        break;
+                    }
+                }
+            }
+            else
+                mapped = false;
+
+            if (mapped)
+                break;
+        }
+    }
 
     CloseHandle(fd);
 
